@@ -80,6 +80,7 @@ class CodeEditor:
         tools_menu = tk.Menu(self.menu_bar, tearoff=0)
         self.menu_bar.add_cascade(label="Tools", menu=tools_menu)
         tools_menu.add_command(label="BCE Plugins Converter", command=self.open_bceplugin_converter)
+        tools_menu.add_command(label="Plugins", command=self.open_plugins_window)
 
         # Add AI menu
         ai_menu = tk.Menu(self.menu_bar, tearoff=0)
@@ -190,6 +191,13 @@ class CodeEditor:
             subprocess.Popen([sys.executable, "bceplugin.py"])
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open BCE Plugin Converter: {e}")
+
+    def open_plugins_window(self):
+        # Open the plugins.pyw script using subprocess
+        try:
+            subprocess.Popen([sys.executable, "plugins.pyw"])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open Plugins window: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
