@@ -1,54 +1,173 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+import subprocess
+import sys
 import os
-import shutil
 
-def convert_to_bceplugin():
-    # Ask the user to select a .zip file
-    zip_file_path = filedialog.askopenfilename(filetypes=[("ZIP Files", "*.zip")])
-    
-    if not zip_file_path:
-        return  # If no file is selected, do nothing
-    
-    # Ask for a location to save the .bceplugin file
-    save_path = filedialog.asksaveasfilename(defaultextension=".bceplugin", filetypes=[("BCE Plugin Files", "*.bceplugin")])
-    
-    if not save_path:
-        return  # If no save location is selected, do nothing
-    
-    try:
-        # Ensure the selected file is a zip file
-        if not zip_file_path.endswith(".zip"):
-            messagebox.showerror("Invalid File", "Please select a valid .zip file!")
-            return
-        
-        # Create a new .bceplugin file by renaming the zip file
-        bceplugin_file_path = os.path.splitext(save_path)[0] + ".bceplugin"
-        
-        # Copy the zip file to the new .bceplugin location
-        shutil.copy(zip_file_path, bceplugin_file_path)
-        
-        messagebox.showinfo("Success", f"File converted successfully to {bceplugin_file_path}")
-    
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to convert the file: {e}")
+# Ensure required modules are installed
+def ensure_dependencies():
+    required_modules = []
+    for module in required_modules:
+        try:
+            __import__(module)
+        except ImportError:
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", module])
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to install required module '{module}': {e}")
+                sys.exit(1)
 
-def main():
-    # Create the Tkinter window
-    root = tk.Tk()
-    root.title("ZIP to BCEPlugin Converter")
-    root.geometry("400x200")
-    
-    # Add a label
-    label = tk.Label(root, text="Convert a ZIP file to a .bceplugin file", font=("Arial", 14))
-    label.pack(pady=20)
-    
-    # Add a button to trigger the conversion
-    convert_button = tk.Button(root, text="Convert ZIP to BCEPlugin", command=convert_to_bceplugin)
-    convert_button.pack(pady=10)
-    
-    # Start the Tkinter event loop
-    root.mainloop()
+ensure_dependencies()
+
+class CodeEditor:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("fidoCode")
+        self.root.geometry("800x600")
+
+        # Create a Text widget for code editing
+        self.text_area = tk.Text(root, wrap="none", undo=True, font=("Courier New", 12))
+        self.text_area.pack(side=tk.RIGHT, fill=tk.BOTH, expand=1)
+
+        # Add line numbers
+        self.line_numbers = tk.Text(root, width=4, padx=3, takefocus=0, border=0, background="lightgray", state="disabled")
+        self.line_numbers.pack(side=tk.LEFT, fill=tk.Y)
+
+        # Add a vertical scrollbar
+        self.scrollbar = tk.Scrollbar(self.text_area)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.text_area.config(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.config(command=self.text_area.yview)
+
+        # Add a horizontal scrollbar
+        self.h_scrollbar = tk.Scrollbar(self.text_area, orient=tk.HORIZONTAL)
+        self.h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.text_area.config(xscrollcommand=self.h_scrollbar.set)
+        self.h_scrollbar.config(command=self.text_area.xview)
+
+        # Bind events for updating line numbers and indentation
+        self.text_area.bind("<KeyRelease>", self.update_line_numbers)
+        self.text_area.bind("<Return>", self.handle_return)
+        self.text_area.bind("<Tab>", self.insert_tab)
+        self.text_area.bind("<BackSpace>", self.handle_backspace)
+
+        # Create a menu bar
+        self.menu_bar = tk.Menu(root)
+        root.config(menu=self.menu_bar)
+
+        # Add File menu
+        file_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open", command=self.open_file)
+        file_menu.add_command(label="Save", command=self.save_file)
+        file_menu.add_command(label="Save As", command=self.save_file_as)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=root.quit)
+
+        # Add Edit menu
+        edit_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="Edit", menu=edit_menu)
+        edit_menu.add_command(label="Undo", command=self.text_area.edit_undo)
+        edit_menu.add_command(label="Redo", command=self.text_area.edit_redo)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Cut", command=lambda: self.root.focus_get().event_generate('<<Cut>>'))
+        edit_menu.add_command(label="Copy", command=lambda: self.root.focus_get().event_generate('<<Copy>>'))
+        edit_menu.add_command(label="Paste", command=lambda: self.root.focus_get().event_generate('<<Paste>>'))
+
+        # Add Tools menu
+        tools_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="BCE Plugins Converter", command=self.open_bceplugin_converter)
+        tools_menu.add_command(label="Plugins", command=self.open_plugins_window)
+
+        # Remove AI-related menu
+        # No AI menu needed anymore, so we remove it
+
+        # Store the current file path
+        self.file_path = None
+
+        self.update_line_numbers()
+
+    def update_line_numbers(self, event=None):
+        self.line_numbers.config(state="normal")
+        self.line_numbers.delete(1.0, tk.END)
+        line_count = int(self.text_area.index("end-1c").split(".")[0])
+        for line in range(1, line_count + 1):
+            self.line_numbers.insert(tk.END, f"{line}\n")
+        self.line_numbers.config(state="disabled")
+
+    def insert_tab(self, event):
+        self.text_area.insert(tk.INSERT, "    ")
+        return "break"
+
+    def handle_return(self, event):
+        current_line = self.text_area.get("insert linestart", "insert")
+        indent = "".join([char for char in current_line if char in " \t"])
+        self.text_area.insert("insert", "\n" + indent)
+        return "break"
+
+    def handle_backspace(self, event):
+        cursor_index = self.text_area.index("insert")
+        col = int(cursor_index.split(".")[1])
+        if col > 0 and col % 4 == 0:
+            prev_chars = self.text_area.get(f"insert-{col % 4}c", "insert")
+            if prev_chars == "    ":
+                self.text_area.delete(f"insert-{col % 4}c", "insert")
+                return "break"
+
+    def open_file(self):
+        try:
+            file_path = filedialog.askopenfilename(filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
+            if file_path:
+                with open(file_path, 'r') as file:
+                    content = file.read()
+                self.text_area.delete(1.0, tk.END)
+                self.text_area.insert(tk.END, content)
+                self.file_path = file_path
+                self.root.title(f"Basic Code Editor - {file_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open file: {e}")
+
+    def save_file(self):
+        if self.file_path:
+            try:
+                with open(self.file_path, 'w') as file:
+                    content = self.text_area.get(1.0, tk.END)
+                    file.write(content.strip())
+                messagebox.showinfo("Success", "File saved successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save file: {e}")
+        else:
+            self.save_file_as()
+
+    def save_file_as(self):
+        try:
+            file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
+            if file_path:
+                with open(file_path, 'w') as file:
+                    content = self.text_area.get(1.0, tk.END)
+                    file.write(content.strip())
+                self.file_path = file_path
+                self.root.title(f"Basic Code Editor - {file_path}")
+                messagebox.showinfo("Success", "File saved successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {e}")
+
+    def open_bceplugin_converter(self):
+        # Open the bceplugin.py script using subprocess
+        try:
+            subprocess.Popen([sys.executable, "bceplugin.py"])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open BCE Plugin Converter: {e}")
+
+    def open_plugins_window(self):
+        # Open the plugins.pyw script using subprocess
+        try:
+            subprocess.Popen([sys.executable, "plugins.pyw"])
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open Plugins window: {e}")
 
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    editor = CodeEditor(root)
+    root.mainloop()

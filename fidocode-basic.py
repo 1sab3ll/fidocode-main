@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import subprocess
 import sys
+import os
 
 # Ensure required modules are installed
 def ensure_dependencies():
-    required_modules = ["openai"]
+    required_modules = []
     for module in required_modules:
         try:
             __import__(module)
@@ -18,12 +19,10 @@ def ensure_dependencies():
 
 ensure_dependencies()
 
-import openai  # Example for OpenAI integration (placeholder)
-
 class CodeEditor:
     def __init__(self, root):
         self.root = root
-        self.root.title("Basic Code Editor")
+        self.root.title("fidoCode")
         self.root.geometry("800x600")
 
         # Create a Text widget for code editing
@@ -75,17 +74,17 @@ class CodeEditor:
         edit_menu.add_command(label="Copy", command=lambda: self.root.focus_get().event_generate('<<Copy>>'))
         edit_menu.add_command(label="Paste", command=lambda: self.root.focus_get().event_generate('<<Paste>>'))
 
-        # Add AI menu
-        ai_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.menu_bar.add_cascade(label="AI", menu=ai_menu)
-        ai_menu.add_command(label="Login to AI", command=self.login_to_ai)
-        ai_menu.add_command(label="Ask AI", command=self.ask_ai_help)
+        # Add Tools menu
+        tools_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="BCE Plugins Converter", command=self.open_bceplugin_converter)
+        tools_menu.add_command(label="Plugins", command=self.open_plugins_window)
+
+        # Remove AI-related menu
+        # No AI menu needed anymore, so we remove it
 
         # Store the current file path
         self.file_path = None
-
-        # Placeholder for AI API key
-        self.ai_api_key = None
 
         self.update_line_numbers()
 
@@ -154,29 +153,19 @@ class CodeEditor:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save file: {e}")
 
-    def login_to_ai(self):
+    def open_bceplugin_converter(self):
+        # Open the bceplugin.py script using subprocess
         try:
-            self.ai_api_key = filedialog.askstring("AI Login", "Enter your AI API Key:")
-            if self.ai_api_key:
-                messagebox.showinfo("Success", "AI API Key set successfully!")
+            subprocess.Popen([sys.executable, "bceplugin.py"])
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to set AI API Key: {e}")
+            messagebox.showerror("Error", f"Failed to open BCE Plugin Converter: {e}")
 
-    def ask_ai_help(self):
-        if not self.ai_api_key:
-            messagebox.showwarning("AI Login", "Please login with your AI API Key first.")
-            return
-
-        prompt = self.text_area.get("1.0", "end-1c")
+    def open_plugins_window(self):
+        # Open the plugins.pyw script using subprocess
         try:
-            response = openai.Completion.create(
-                engine="text-davinci-003",
-                prompt=prompt,
-                max_tokens=150
-            )
-            messagebox.showinfo("AI Response", response.choices[0].text.strip())
+            subprocess.Popen([sys.executable, "plugins.pyw"])
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to get AI response: {e}")
+            messagebox.showerror("Error", f"Failed to open Plugins window: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()

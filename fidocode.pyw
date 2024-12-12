@@ -3,6 +3,8 @@ from tkinter import filedialog, messagebox
 import subprocess
 import sys
 import os
+import openai
+from key import API_KEY  # Import the API_KEY from key.py
 
 # Ensure required modules are installed
 def ensure_dependencies():
@@ -19,12 +21,10 @@ def ensure_dependencies():
 
 ensure_dependencies()
 
-import openai  # Example for OpenAI integration (placeholder)
-
 class CodeEditor:
     def __init__(self, root):
         self.root = root
-        self.root.title("Basic Code Editor")
+        self.root.title("fidoCode")
         self.root.geometry("800x600")
 
         # Create a Text widget for code editing
@@ -82,11 +82,14 @@ class CodeEditor:
         tools_menu.add_command(label="BCE Plugins Converter", command=self.open_bceplugin_converter)
         tools_menu.add_command(label="Plugins", command=self.open_plugins_window)
 
-        # Add AI menu
-        ai_menu = tk.Menu(self.menu_bar, tearoff=0)
-        self.menu_bar.add_cascade(label="AI", menu=ai_menu)
-        ai_menu.add_command(label="Login to AI", command=self.login_to_ai)
-        ai_menu.add_command(label="Ask AI", command=self.ask_ai_help)
+        # Add AI menu (grayed out by default)
+        self.ai_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="AI", menu=self.ai_menu)
+        self.ai_menu.add_command(label="Login to AI", command=self.login_to_ai)
+        self.ai_menu.add_command(label="Ask AI", command=self.ask_ai_help)
+
+        # Disable AI features initially
+        self.disable_ai_menu()
 
         # Store the current file path
         self.file_path = None
@@ -166,6 +169,7 @@ class CodeEditor:
             self.ai_api_key = filedialog.askstring("AI Login", "Enter your AI API Key:")
             if self.ai_api_key:
                 messagebox.showinfo("Success", "AI API Key set successfully!")
+                self.enable_ai_menu()  # Enable AI menu after key is set
         except Exception as e:
             messagebox.showerror("Error", f"Failed to set AI API Key: {e}")
 
@@ -174,10 +178,13 @@ class CodeEditor:
             messagebox.showwarning("AI Login", "Please login with your AI API Key first.")
             return
 
+        # Set the API key from the imported key
+        openai.api_key = API_KEY  # Use the key imported from key.py
+
         prompt = self.text_area.get("1.0", "end-1c")
         try:
             response = openai.Completion.create(
-                engine="text-davinci-003",
+                model="text-davinci-003",
                 prompt=prompt,
                 max_tokens=150
             )
@@ -198,6 +205,16 @@ class CodeEditor:
             subprocess.Popen([sys.executable, "plugins.pyw"])
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open Plugins window: {e}")
+
+    def disable_ai_menu(self):
+        """Disable the AI menu options initially"""
+        self.ai_menu.entryconfig("Login to AI", state="disabled")
+        self.ai_menu.entryconfig("Ask AI", state="disabled")
+
+    def enable_ai_menu(self):
+        """Enable the AI menu options after successful API key setup"""
+        self.ai_menu.entryconfig("Login to AI", state="normal")
+        self.ai_menu.entryconfig("Ask AI", state="normal")
 
 if __name__ == "__main__":
     root = tk.Tk()
